@@ -28,7 +28,10 @@ streamlit run app.py
 
 3. **Open your browser** to the URL shown (usually `http://localhost:8501`)
 
-4. **Start chatting!** Type your orders in the text input field.
+4. **Start chatting!** 
+   - **Voice Input**: Click the "🎤 Click to Speak" button and speak your order (works in Chrome, Edge, Safari)
+   - **Text Input**: Type your message in the text field
+   - **Hear Responses**: Click the "🔊 Speak" button on any waitress message to hear it read aloud
 
 #### Deploy to Streamlit Cloud (Share with Others)
 
