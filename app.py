@@ -101,11 +101,19 @@ with col1:
                 </div>
             """, unsafe_allow_html=True)
         else:
-            for entry in st.session_state.conversation_history:
+            for idx, entry in enumerate(st.session_state.conversation_history):
                 if entry['type'] == 'waitress':
+                    # Add TTS button for waitress messages
+                    message_id = f"waitress_msg_{idx}"
                     st.markdown(f"""
-                        <div class="waitress-message">
+                        <div class="waitress-message" id="{message_id}">
                             <strong>🤖 Waitress:</strong> {entry['text']}
+                            <button onclick="speakText('{entry['text'].replace("'", "\\'")}', '{message_id}')" 
+                                    style="float: right; background: #2196f3; color: white; border: none; 
+                                           border-radius: 4px; padding: 0.25rem 0.5rem; cursor: pointer; 
+                                           font-size: 0.8rem; margin-left: 0.5rem;">
+                                🔊 Speak
+                            </button>
                         </div>
                     """, unsafe_allow_html=True)
                 else:
@@ -115,16 +123,187 @@ with col1:
                         </div>
                     """, unsafe_allow_html=True)
     
+    # Add TTS JavaScript
+    st.components.v1.html("""
+    <script>
+        function speakText(text, elementId) {
+            if ('speechSynthesis' in window) {
+                // Cancel any ongoing speech
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-CO'; // Spanish (Colombia) with English fallback
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+                
+                // Try to find a Spanish voice
+                const voices = window.speechSynthesis.getVoices();
+                const spanishVoice = voices.find(voice => 
+                    voice.lang.startsWith('es') || voice.lang.includes('Spanish')
+                );
+                if (spanishVoice) {
+                    utterance.voice = spanishVoice;
+                }
+                
+                utterance.onstart = function() {
+                    const btn = document.querySelector(`#${elementId} button`);
+                    if (btn) {
+                        btn.textContent = '⏸️ Speaking...';
+                        btn.style.background = '#4caf50';
+                    }
+                };
+                
+                utterance.onend = function() {
+                    const btn = document.querySelector(`#${elementId} button`);
+                    if (btn) {
+                        btn.textContent = '🔊 Speak';
+                        btn.style.background = '#2196f3';
+                    }
+                };
+                
+                utterance.onerror = function(event) {
+                    const btn = document.querySelector(`#${elementId} button`);
+                    if (btn) {
+                        btn.textContent = '🔊 Speak';
+                        btn.style.background = '#2196f3';
+                    }
+                    console.error('Speech synthesis error:', event);
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert('Text-to-speech is not supported in this browser.');
+            }
+        }
+        
+        // Load voices when available
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = function() {
+                // Voices loaded
+            };
+        }
+    </script>
+    """, height=0)
+    
     st.markdown("---")
     
     # Input section
     st.subheader("💬 Chat with the Waitress")
-    st.write("Type your message below (e.g., 'Show me the menu', 'I'd like a salmon bowl', 'That's all')")
+    st.write("🎤 **Speak your order** or type your message below")
     
-    # Text input
+    # Voice input JavaScript component - injects into text input
+    st.components.v1.html("""
+    <div style="margin-bottom: 1rem;">
+        <button id="voiceBtn" style="
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        ">🎤 Click to Speak</button>
+        <div id="status" style="text-align: center; color: #666; font-size: 0.9rem; min-height: 1.5rem;"></div>
+    </div>
+    <script>
+        (function() {
+            const voiceBtn = document.getElementById('voiceBtn');
+            const status = document.getElementById('status');
+            let recognition = null;
+            let isListening = false;
+            
+            // Find the Streamlit text input
+            function findTextInput() {
+                const inputs = document.querySelectorAll('input[type="text"]');
+                for (let input of inputs) {
+                    if (input.placeholder && input.placeholder.includes('salmon bowl')) {
+                        return input;
+                    }
+                }
+                // Fallback: find last text input
+                return inputs[inputs.length - 1];
+            }
+            
+            // Check if browser supports speech recognition
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'es-CO,en-US'; // Spanish (Colombia) and English
+                
+                recognition.onstart = function() {
+                    isListening = true;
+                    voiceBtn.textContent = '🛑 Listening... Click to Stop';
+                    voiceBtn.style.background = 'linear-gradient(90deg, #f44336 0%, #e91e63 100%)';
+                    status.textContent = '🎤 Listening... Speak now!';
+                    status.style.color = '#f44336';
+                };
+                
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    const textInput = findTextInput();
+                    if (textInput) {
+                        textInput.value = transcript;
+                        // Trigger input event to update Streamlit
+                        textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        textInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    status.textContent = '✅ Heard: "' + transcript + '" - Click Send to submit';
+                    status.style.color = '#4caf50';
+                };
+                
+                recognition.onerror = function(event) {
+                    status.textContent = '❌ Error: ' + event.error + ' (Make sure to allow microphone access)';
+                    status.style.color = '#f44336';
+                    isListening = false;
+                    voiceBtn.textContent = '🎤 Click to Speak';
+                    voiceBtn.style.background = 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)';
+                };
+                
+                recognition.onend = function() {
+                    isListening = false;
+                    voiceBtn.textContent = '🎤 Click to Speak';
+                    voiceBtn.style.background = 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)';
+                    if (status.textContent.indexOf('Heard:') === -1 && status.textContent.indexOf('Error') === -1) {
+                        status.textContent = '⏹️ Stopped listening';
+                        status.style.color = '#666';
+                    }
+                };
+                
+                voiceBtn.addEventListener('click', function() {
+                    if (isListening) {
+                        recognition.stop();
+                    } else {
+                        status.textContent = '🎤 Starting...';
+                        status.style.color = '#667eea';
+                        try {
+                            recognition.start();
+                        } catch(e) {
+                            status.textContent = '❌ Error: ' + e.message;
+                            status.style.color = '#f44336';
+                        }
+                    }
+                });
+            } else {
+                voiceBtn.textContent = '❌ Voice not supported in this browser';
+                voiceBtn.disabled = true;
+                voiceBtn.style.background = '#ccc';
+                status.textContent = 'Please use Chrome, Edge, or Safari for voice input';
+                status.style.color = '#f44336';
+            }
+        })();
+    </script>
+    """, height=100)
+    
+    # Text input (populated by voice or manual entry)
     user_input = st.text_input(
         "Your message:",
-        placeholder="e.g., 'I'd like a salmon bowl' or 'Show me the menu'",
+        placeholder="e.g., 'I'd like a salmon bowl' or 'Show me the menu' (or use voice input above)",
         key="text_input",
         label_visibility="collapsed"
     )
@@ -145,6 +324,9 @@ with col1:
                     'type': 'waitress',
                     'text': response
                 })
+                
+                # Clear input
+                st.session_state.text_input = ""
                 
                 # If order confirmed, reset for next order
                 if not should_continue:
