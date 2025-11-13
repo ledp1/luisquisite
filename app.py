@@ -105,10 +105,12 @@ with col1:
                 if entry['type'] == 'waitress':
                     # Add TTS button for waitress messages
                     message_id = f"waitress_msg_{idx}"
+                    # Escape text for JavaScript
+                    escaped_text = entry['text'].replace("'", "\\'").replace('"', '\\"').replace('\n', ' ')
                     st.markdown(f"""
                         <div class="waitress-message" id="{message_id}">
                             <strong>🤖 Waitress:</strong> {entry['text']}
-                            <button onclick="speakText('{entry['text'].replace("'", "\\'")}', '{message_id}')" 
+                            <button onclick="speakText('{escaped_text}', '{message_id}')" 
                                     style="float: right; background: #2196f3; color: white; border: none; 
                                            border-radius: 4px; padding: 0.25rem 0.5rem; cursor: pointer; 
                                            font-size: 0.8rem; margin-left: 0.5rem;">
