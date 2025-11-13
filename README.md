@@ -53,25 +53,31 @@ For the full voice experience with speech recognition and text-to-speech:
 
 **Installation:**
 
-1. Install dependencies:
+1. Install base dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-**Note for macOS users**: If you encounter issues with PyAudio, you may need to install PortAudio first:
+2. Install voice agent dependencies (requires system libraries):
+```bash
+pip install -r requirements-voice.txt
+```
+
+**Note for macOS users**: You may need to install PortAudio first:
 ```bash
 brew install portaudio
-pip install pyaudio
+pip install -r requirements-voice.txt
 ```
 
 **Note for Linux users**: You may need to install:
 ```bash
 sudo apt-get install portaudio19-dev python3-pyaudio
+pip install -r requirements-voice.txt
 ```
 
 **Note for Windows users**: PyAudio should install directly, but if you have issues, download the appropriate wheel from [here](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio).
 
-2. Run the voice agent:
+3. Run the voice agent:
 ```bash
 python main.py
 ```

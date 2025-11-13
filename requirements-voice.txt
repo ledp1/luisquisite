@@ -1,0 +1,10 @@
+# Additional requirements for local voice agent (main.py)
+# Install these AFTER installing requirements.txt
+# Note: PyAudio requires system libraries:
+#   macOS: brew install portaudio
+#   Linux: sudo apt-get install portaudio19-dev python3-pyaudio
+#   Windows: Usually installs directly, but may need wheel from https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio
+
+pyttsx3==2.90
+pyaudio==0.2.14
+
